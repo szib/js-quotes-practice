@@ -4,36 +4,13 @@ const URL = 'http://localhost:3000/quotes';
 const quotesListEl = document.querySelector('#quote-list');
 const newQuoteForm = document.querySelector('#new-quote-form');
 
-const rejectWithError = err => Promise.reject(new Error(`¯\\_(ツ)_/¯ ==> ${err}`));
-
-const fetchQuotes = () => fetch(URL)
-  .then(resp => resp.json())
-  .catch(err => rejectWithError(err));
-
-const deleteQuote = (id) => {
-  const config = {
-    method: 'DELETE',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  };
-  return fetch(`${URL}/${id}`, config)
-    .catch(err => rejectWithError(err));
-};
-
-const likeQuote = (quote) => {
-  const config = {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      likes: ++quote.likes,
-    }),
-  };
-  return fetch(`${URL}/${quote.id}`, config)
-    .catch(err => rejectWithError(err));
-};
+const api = (url, options = {}) => fetch(url, options)
+  .then((response) => {
+    if (response.ok) {
+      return response.json();
+    }
+    return Promise.reject(response.json());
+  });
 
 const quoteListEl = (quote) => {
   const li = document.createElement('li');
@@ -50,13 +27,28 @@ const quoteListEl = (quote) => {
   `;
   const deleteBtn = li.querySelector('.btn-danger');
   deleteBtn.addEventListener('click', (e) => {
-    deleteQuote(quote.id)
+    const options = {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    };
+    api(`${URL}/${quote.id}`, options)
       .then(quotesListEl.removeChild(li));
   });
   const likeBtn = li.querySelector('.btn-success');
   likeBtn.addEventListener('click', (e) => {
-    likeQuote(quote)
-      .then(resp => resp.json())
+    const options = {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        likes: ++quote.likes,
+      }),
+    };
+
+    api(`${URL}/${quote.id}`, options)
       .then((json) => {
         likeBtn.innerHTML = `Likes: <span>${json.likes}</span>`;
       });
@@ -68,19 +60,6 @@ const parseQuotes = (quotes) => {
   quotes.forEach(quote => quotesListEl.appendChild(quoteListEl(quote)));
 };
 
-const postNewQuote = (quote) => {
-  const config = {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(quote),
-  };
-  return fetch(URL, config)
-    .then(resp => resp.json())
-    .catch(err => rejectWithError(err));
-};
-
 const handleNewClickSubmit = (event) => {
   event.preventDefault();
   const quote = {
@@ -88,13 +67,22 @@ const handleNewClickSubmit = (event) => {
     likes: 0,
     quote: newQuoteForm['new-quote'].value,
   };
-  postNewQuote(quote)
+
+  const options = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(quote),
+  };
+
+  api(URL, options)
     .then(returnedQuote => quotesListEl.appendChild(quoteListEl(returnedQuote)));
 };
 
 const init = () => {
   console.log('¯\\_(ツ)_/¯ init...');
-  fetchQuotes()
+  api(URL)
     .then(parseQuotes)
     .catch(console.err);
 
